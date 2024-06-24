@@ -1,0 +1,173 @@
+class Usuario:
+    def __init__(self, nome, data_nascimento, cpf, endereco):
+        self.nome = nome
+        self.data_nascimento = data_nascimento
+        self.cpf = cpf
+        self.endereco = endereco
+
+class ContaCorrente:
+    numero_conta = 0
+    agencia = "001"
+
+    def __init__(self, usuario):
+        ContaCorrente.numero_conta += 1
+        self.numero = ContaCorrente.numero_conta
+        self.usuario = usuario
+        self.saldo = 0
+        self.limite = 500
+        self.extrato = ""
+        self.numero_saques = 0
+        self.LIMITE_SAQUES = 3
+
+def cadastrar_usuario(lista_usuarios):
+    while True:
+        nome = input("Informe o nome do usuário: ")
+        data_nascimento = input("Informe a data de nascimento (DD/MM/AAAA): ")
+        cpf = input("Informe o CPF (apenas números): ")
+        endereco = input("Informe o endereço no formato 'logradouro, número, bairro - cidade/estado': ")
+
+        if not cpf.isdigit() or len(cpf) != 11:
+            print("CPF inválido. O CPF deve conter apenas números e ter 11 dígitos.")
+            continue
+
+        # Verifica se já existe um usuário com o mesmo CPF
+        cpf_existente = any(usuario.cpf == cpf for usuario in lista_usuarios)
+        if cpf_existente:
+            print("CPF já cadastrado. Por favor, informe outro CPF.")
+        else:
+            novo_usuario = Usuario(nome, data_nascimento, cpf, endereco)
+            lista_usuarios.append(novo_usuario)
+            print("Usuário cadastrado com sucesso!")
+
+            # Cria automaticamente uma conta para o novo usuário
+            nova_conta = ContaCorrente(novo_usuario)
+            contas.append(nova_conta)
+            print(f"Conta criada com sucesso! Número da conta: {nova_conta.numero}")
+
+            break
+
+def listar_contas(lista_contas):
+    if not lista_contas:
+        print("Não há contas cadastradas.")
+    else:
+        print("\n--- Lista de Contas ---")
+        for conta in lista_contas:
+            print(f"Conta {conta.numero} - Titular: {conta.usuario.nome} (CPF: {conta.usuario.cpf})")
+
+def inativar_conta(numero_conta, lista_contas):
+    for conta in lista_contas:
+        if conta.numero == numero_conta:
+            lista_contas.remove(conta)
+            print(f"Conta {numero_conta} inativada com sucesso.")
+            return
+    print(f"Conta {numero_conta} não encontrada.")
+
+def deposito(saldo, extrato, valor):
+    saldo += valor
+    extrato += f"Depósito: R$ {valor:.2f}\n"
+    return saldo, extrato
+
+def saque(*, saldo, valor, extrato, limite, numero_saques):
+    excedeu_saldo = valor > saldo
+    excedeu_limite = valor > limite
+    excedeu_saques = numero_saques >= 3
+
+    if excedeu_saldo:
+        print("Operação falhou! Você não tem saldo suficiente.")
+    elif excedeu_limite:
+        print("Operação falhou! O valor do saque excede o limite.")
+    elif excedeu_saques:
+        print("Operação falhou! Número máximo de saques excedido.")
+    elif valor > 0:
+        saldo -= valor
+        extrato += f"Saque: R$ {valor:.2f}\n"
+        numero_saques += 1
+    else:
+        print("Operação falhou! O valor informado é inválido.")
+
+    return saldo, extrato
+
+def extrato(saldo, extrato):
+    print("\n================ EXTRATO ================")
+    print("Não foram realizadas movimentações." if not extrato else extrato)
+    print(f"\nSaldo: R$ {saldo:.2f}")
+    print("==========================================")
+
+# Lista para armazenar usuários e contas
+usuarios = []
+contas = []
+
+# Exemplo de uso das funções
+while True:
+    menu = """
+
+    [c] Cadastrar Usuário
+    [l] Listar Contas
+    [i] Inativar Conta
+    [d] Depositar
+    [s] Sacar
+    [e] Extrato
+    [q] Sair
+
+    => """
+
+    opcao = input(menu)
+
+    if opcao == "c":
+        cadastrar_usuario(usuarios)
+
+    elif opcao == "l":
+        listar_contas(contas)
+
+    elif opcao == "i":
+        if not contas:
+            print("Não há contas para inativar.")
+        else:
+            try:
+                num_conta = int(input("Informe o número da conta a ser inativada: "))
+                inativar_conta(num_conta, contas)
+            except ValueError:
+                print("Número de conta inválido. Informe um número válido.")
+
+    elif opcao == "d":
+        try:
+            num_conta = int(input("Informe o número da conta: "))
+            valor_deposito = float(input("Informe o valor do depósito: "))
+            conta_selecionada = next((conta for conta in contas if conta.numero == num_conta), None)
+            if conta_selecionada:
+                conta_selecionada.saldo, conta_selecionada.extrato = deposito(conta_selecionada.saldo, conta_selecionada.extrato, valor_deposito)
+                print("Depósito realizado com sucesso!")
+            else:
+                print("Conta não encontrada.")
+        except ValueError:
+            print("Valor inválido. Informe um número válido para o depósito.")
+
+    elif opcao == "s":
+        try:
+            num_conta = int(input("Informe o número da conta: "))
+            valor_saque = float(input("Informe o valor do saque: "))
+            conta_selecionada = next((conta for conta in contas if conta.numero == num_conta), None)
+            if conta_selecionada:
+                conta_selecionada.saldo, conta_selecionada.extrato = saque(saldo=conta_selecionada.saldo, valor=valor_saque, extrato=conta_selecionada.extrato, limite=conta_selecionada.limite, numero_saques=conta_selecionada.numero_saques)
+                print("Saque realizado com sucesso!")
+            else:
+                print("Conta não encontrada.")
+        except ValueError:
+            print("Valor inválido. Informe um número válido para o saque.")
+
+    elif opcao == "e":
+        try:
+            num_conta = int(input("Informe o número da conta: "))
+            conta_selecionada = next((conta for conta in contas if conta.numero == num_conta), None)
+            if conta_selecionada:
+                extrato(conta_selecionada.saldo, conta_selecionada.extrato)
+            else:
+                print("Conta não encontrada.")
+        except ValueError:
+            print("Número de conta inválido. Informe um número válido para visualizar o extrato.")
+
+    elif opcao == "q":
+        break
+
+    else:
+        print("Operação inválida, por favor selecione novamente a operação desejada.")
